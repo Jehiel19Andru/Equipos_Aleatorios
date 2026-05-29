@@ -1,228 +1,226 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Sistema de Equipos - Alumno</title>
-	<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007ACC'/%3E%3Ctext x='50' y='55' font-size='60' text-anchor='middle' fill='white'%3EA%3C/text%3E%3C/svg%3E">
-	<link rel="stylesheet" href="/styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Equipos - Alumno</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007ACC'/%3E%3Ctext x='50' y='55' font-size='60' text-anchor='middle' fill='white'%3EA%3C/text%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-	<div class="container">
-		<div class="header">
-			<h1>Panel del Alumno</h1>
-		</div>
+    <div class="container">
+        <div class="header">
+            <h1>Panel del Alumno</h1>
+        </div>
         
-		<div id="loginSection" class="section">
-			<h2>Unirse a Sala</h2>
-			<div class="form-group">
-				<input type="text" id="alumnoNombre" placeholder="Nombre del alumno" class="input-field">
-			</div>
-			<div class="form-group">
-				<input type="text" id="codigoSalaAlumno" placeholder="Codigo de sala" class="input-field">
-			</div>
-			<button onclick="unirseSala()" class="btn btn-primary">Unirse a Sala</button>
-		</div>
+        <div id="loginSection" class="section">
+            <h2>Unirse a Sala</h2>
+            <div class="form-group">
+                <input type="text" id="alumnoNombre" placeholder="Nombre del alumno" class="input-field">
+            </div>
+            <div class="form-group">
+                <input type="text" id="codigoSalaAlumno" placeholder="Codigo de sala" class="input-field">
+            </div>
+            <button onclick="unirseSala()" class="btn btn-primary">Unirse a Sala</button>
+        </div>
         
-		<div id="equipoSection" class="section" style="display:none;">
-			<h2>Mi Equipo</h2>
-			<div id="miEquipoCard" class="equipo-card equipo-alumno"></div>
-		</div>
+        <div id="equipoSection" class="section" style="display:none;">
+            <h2>Mi Equipo</h2>
+            <div id="miEquipoCard" class="equipo-card equipo-alumno"></div>
+        </div>
         
-		<div id="todosEquiposSection" class="section" style="display:none;">
-			<h2>Todos los Equipos</h2>
-			<div id="todosEquiposContainer" class="equipos-grid"></div>
-		</div>
-        
-		<div id="infoSection" class="section" style="display:none;">
-			<div class="info-card">
-				<p><strong>Mi Codigo:</strong> <span id="miCodigo"></span></p>
-				<p><strong>Sala:</strong> <span id="salaCodigoAlumno"></span></p>
-				<button onclick="cerrarSesionAlumno()" class="btn btn-secondary">Cerrar Sesión</button>
-			</div>
-		</div>
-	</div>
+        <div id="infoSection" class="section" style="display:none;">
+            <div class="info-card">
+                <p><strong>Mi Codigo:</strong> <span id="miCodigo"></span></p>
+                <p><strong>Sala:</strong> <span id="salaCodigoAlumno"></span></p>
+                <button onclick="cerrarSesionAlumno()" class="btn btn-secondary">Cerrar Sesión</button>
+            </div>
+        </div>
+    </div>
     
-	<script>
-		let ws = null;
-		let salaId = null;
-		let alumnoId = null;
-		let miEquipoActual = -1;
+    <script>
+        let ws = null;
+        let salaId = null;
+        let alumnoId = null;
+        let miEquipoActual = -1;
         
-		function unirseSala() {
-			const nombre = document.getElementById('alumnoNombre').value;
-			const codigoSala = document.getElementById('codigoSalaAlumno').value;
+        function unirseSala() {
+            const nombre = document.getElementById('alumnoNombre').value;
+            const codigoSala = document.getElementById('codigoSalaAlumno').value;
             
-			if (!nombre) {
-				alert('Por favor ingrese su nombre');
-				return;
-			}
+            if (!nombre) {
+                alert('Por favor ingrese su nombre');
+                return;
+            }
             
-			if (!codigoSala) {
-				alert('Por favor ingrese el codigo de la sala');
-				return;
-			}
+            if (!codigoSala) {
+                alert('Por favor ingrese el codigo de la sala');
+                return;
+            }
             
-			ws = new WebSocket(`ws://${window.location.host}`);
+            ws = new WebSocket(`ws://${window.location.host}`);
             
-			ws.onopen = () => {
-				ws.send(JSON.stringify({
-					type: 'unirse_alumno',
-					nombre: nombre,
-					codigo_sala: codigoSala
-				}));
-			};
+            ws.onopen = () => {
+                ws.send(JSON.stringify({
+                    type: 'unirse_alumno',
+                    nombre: nombre,
+                    codigo_sala: codigoSala
+                }));
+            };
             
-			ws.onmessage = (event) => {
-				const data = JSON.parse(event.data);
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
                 
-				if (data.type === 'union_exitosa') {
-					salaId = codigoSala;
-					alumnoId = data.data.id_alumno;
-					miEquipoActual = data.data.numero_equipo;
+                if (data.type === 'union_exitosa') {
+                    salaId = codigoSala;
+                    alumnoId = data.data.id_alumno;
+                    miEquipoActual = data.data.numero_equipo;
                     
-					document.getElementById('miCodigo').innerText = alumnoId;
-					document.getElementById('salaCodigoAlumno').innerText = salaId;
-					document.getElementById('loginSection').style.display = 'none';
-					document.getElementById('equipoSection').style.display = 'block';
-					document.getElementById('todosEquiposSection').style.display = 'block';
-					document.getElementById('infoSection').style.display = 'block';
+                    document.getElementById('miCodigo').innerText = alumnoId;
+                    document.getElementById('salaCodigoAlumno').innerText = salaId;
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('equipoSection').style.display = 'block';
                     
-					alert('Te has unido al equipo ' + miEquipoActual);
-					solicitarEstadoActual();
-				} else if (data.type === 'actualizacion') {
-					actualizarInterfaz(data.data);
-				} else if (data.type === 'estado_actual') {
-					actualizarInterfaz(data.data);
-				} else if (data.type === 'logout_exitoso') {
-					alert(data.data.mensaje);
-					redirigirAPantallaPrincipal();
-				} else if (data.type === 'error') {
-					alert('Error: ' + data.data.mensaje);
-					if (data.data.mensaje.includes('no encontrada') || data.data.mensaje.includes('cerrada')) {
-						redirigirAPantallaPrincipal();
-					}
-				}
-			};
-		}
+                    // SE REMOVIÓ LA LÍNEA QUE MOSTRABA LA SECCIÓN DE TODOS LOS EQUIPOS
+                    
+                    document.getElementById('infoSection').style.display = 'block';
+                    
+                    alert('Te has unido al equipo ' + miEquipoActual);
+                    solicitarEstadoActual();
+                } else if (data.type === 'actualizacion') {
+                    actualizarInterfaz(data.data);
+                } else if (data.type === 'estado_actual') {
+                    actualizarInterfaz(data.data);
+                } else if (data.type === 'logout_exitoso') {
+                    alert(data.data.mensaje);
+                    redirigirAPantallaPrincipal();
+                } else if (data.type === 'error') {
+                    alert('Error: ' + data.data.mensaje);
+                    if (data.data.mensaje.includes('no encontrada') || data.data.mensaje.includes('cerrada')) {
+                        redirigirAPantallaPrincipal();
+                    }
+                }
+            };
+        }
         
-		function solicitarEstadoActual() {
-			ws.send(JSON.stringify({
-				type: 'obtener_estado',
-				id_sala: salaId,
-				tipo: 'alumno'
-			}));
-		}
+        function solicitarEstadoActual() {
+            ws.send(JSON.stringify({
+                type: 'obtener_estado',
+                id_sala: salaId,
+                tipo: 'alumno'
+            }));
+        }
 
-		function cerrarSesionAlumno() {
-			if (!ws || ws.readyState !== WebSocket.OPEN) {
-				alert('No hay conexion activa.');
-				return;
-			}
-			ws.send(JSON.stringify({
-				type: 'logout_alumno',
-				codigo_sala: salaId,
-				id_alumno: alumnoId
-			}));
-		}
+        function cerrarSesionAlumno() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('No hay conexion activa.');
+                return;
+            }
+            ws.send(JSON.stringify({
+                type: 'logout_alumno',
+                codigo_sala: salaId,
+                id_alumno: alumnoId
+            }));
+        }
         
-		function redirigirAPantallaPrincipal() {
-			if (ws && ws.readyState === WebSocket.OPEN) {
-				ws.close();
-			}
-			window.location.reload();
-		}
+        function redirigirAPantallaPrincipal() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.close();
+            }
+            window.location.reload();
+        }
         
-		function balancearEquipos(equipos, maxIntegrantes) {
-			const copia = equipos.map(equipo => ({
-				numero: equipo.numero,
-				miembros: [...equipo.miembros],
-				completo: equipo.completo
-			}));
-			for (let i = 0; i < copia.length; i++) {
-				const actual = copia[i];
-				if (actual.miembros.length >= maxIntegrantes) continue;
-				for (let j = i + 1; j < copia.length && actual.miembros.length < maxIntegrantes; j++) {
-					const siguiente = copia[j];
-					while (actual.miembros.length < maxIntegrantes && siguiente.miembros.length > 0) {
-						actual.miembros.push(siguiente.miembros.shift());
-					}
-				}
-			}
-			return copia
-				.filter(equipo => equipo.miembros.length > 0)
-				.map(equipo => ({
-					...equipo,
-					completo: equipo.miembros.length === maxIntegrantes
-				}));
-		}
+        function balancearEquipos(equipos, maxIntegrantes) {
+            const copia = equipos.map(equipo => ({
+                numero: equipo.numero,
+                miembros: [...equipo.miembros],
+                completo: equipo.completo
+            }));
+            for (let i = 0; i < copia.length; i++) {
+                const actual = copia[i];
+                if (actual.miembros.length >= maxIntegrantes) continue;
+                for (let j = i + 1; j < copia.length && actual.miembros.length < maxIntegrantes; j++) {
+                    const siguiente = copia[j];
+                    while (actual.miembros.length < maxIntegrantes && siguiente.miembros.length > 0) {
+                        actual.miembros.push(siguiente.miembros.shift());
+                    }
+                }
+            }
+            return copia
+                .filter(equipo => equipo.miembros.length > 0)
+                .map(equipo => ({
+                    ...equipo,
+                    completo: equipo.miembros.length === maxIntegrantes
+                }));
+        }
         
-		function actualizarInterfaz(estado) {
-			const miEquipoCard = document.getElementById('miEquipoCard');
-			const todosEquiposContainer = document.getElementById('todosEquiposContainer');
+        function actualizarInterfaz(estado) {
+            const miEquipoCard = document.getElementById('miEquipoCard');
+            const todosEquiposContainer = document.getElementById('todosEquiposContainer');
             
-			let miEquipoEncontrado = null;
+            let miEquipoEncontrado = null;
             
-			const equiposBalanceados = estado.equipos && estado.equipos.length > 0
-				? balancearEquipos(estado.equipos, estado.integrantes_por_equipo)
-				: [];
+            const equiposBalanceados = estado.equipos && estado.equipos.length > 0
+                ? balancearEquipos(estado.equipos, estado.integrantes_por_equipo)
+                : [];
             
-			if (equiposBalanceados.length > 0) {
-				todosEquiposContainer.innerHTML = '';
+            if (equiposBalanceados.length > 0) {
+                // Mantenemos esta lógica en memoria por si el contenedor existe en el DOM (evita errores de JS)
+                if (todosEquiposContainer) todosEquiposContainer.innerHTML = '';
                 
-				equiposBalanceados.forEach(equipo => {
-					const equipoCard = document.createElement('div');
-					equipoCard.className = 'equipo-card';
+                equiposBalanceados.forEach(equipo => {
+                    const equipoCard = document.createElement('div');
+                    equipoCard.className = 'equipo-card';
                     
-					const esMiEquipo = equipo.numero === miEquipoActual || equipo.miembros.some(miembro => miembro.id === alumnoId);
-					if (esMiEquipo) {
-						equipoCard.classList.add('mi-equipo');
-						miEquipoEncontrado = equipo;
-					}
+                    const esMiEquipo = equipo.numero === miEquipoActual || equipo.miembros.some(miembro => miembro.id === alumnoId);
+                    if (esMiEquipo) {
+                        equipoCard.classList.add('mi-equipo');
+                        miEquipoEncontrado = equipo;
+                    }
                     
-					const completoClass = equipo.completo ? 'equipo-completo' : 'equipo-incompleto';
-					equipoCard.classList.add(completoClass);
+                    const completoClass = equipo.completo ? 'equipo-completo' : 'equipo-incompleto';
+                    equipoCard.classList.add(completoClass);
                     
-					let miembrosHtml = '<h3>Equipo ' + equipo.numero + '</h3>';
-					miembrosHtml += '<p>Integrantes: ' + equipo.miembros.length + '/' + estado.integrantes_por_equipo + '</p>';
-					miembrosHtml += '<ul>';
-					equipo.miembros.forEach(miembro => {
-						const esMiembroActual = miembro.id === alumnoId;
-						miembrosHtml += '<li' + (esMiembroActual ? ' class="yo"' : '') + '>' + miembro.nombre + (esMiembroActual ? ' (yo)' : '') + '</li>';
-					});
-					miembrosHtml += '</ul>';
+                    let miembrosHtml = '<h3>Equipo ' + equipo.numero + '</h3>';
+                    miembrosHtml += '<p>Integrantes: ' + equipo.miembros.length + '/' + estado.integrantes_por_equipo + '</p>';
+                    miembrosHtml += '<ul>';
+                    equipo.miembros.forEach(miembro => {
+                        const esMiembroActual = miembro.id === alumnoId;
+                        miembrosHtml += '<li' + (esMiembroActual ? ' class="yo"' : '') + '>' + miembro.nombre + (esMiembroActual ? ' (yo)' : '') + '</li>';
+                    });
+                    miembrosHtml += '</ul>';
                     
-					if (equipo.completo) {
-						miembrosHtml += '<div class="completo-badge">Equipo Completo</div>';
-					}
+                    if (equipo.completo) {
+                        miembrosHtml += '<div class="completo-badge">Equipo Completo</div>';
+                    }
                     
-					equipoCard.innerHTML = miembrosHtml;
-					todosEquiposContainer.appendChild(equipoCard);
-				});
+                    equipoCard.innerHTML = miembrosHtml;
+                    if (todosEquiposContainer) todosEquiposContainer.appendChild(equipoCard);
+                });
                 
-				if (miEquipoEncontrado) {
-					let miEquipoHtml = '<h3>Mi Equipo - Equipo ' + miEquipoEncontrado.numero + '</h3>';
-					miEquipoHtml += '<p>Integrantes: ' + miEquipoEncontrado.miembros.length + '/' + estado.integrantes_por_equipo + '</p>';
-					miEquipoHtml += '<ul>';
-					miEquipoEncontrado.miembros.forEach(miembro => {
-						const esMiembroActual = miembro.id === alumnoId;
-						miEquipoHtml += '<li' + (esMiembroActual ? ' class="yo"' : '') + '>' + miembro.nombre + (esMiembroActual ? ' (yo)' : '') + '</li>';
-					});
-					miEquipoHtml += '</ul>';
+                if (miEquipoEncontrado) {
+                    let miEquipoHtml = '<h3>Mi Equipo - Equipo ' + miEquipoEncontrado.numero + '</h3>';
+                    miEquipoHtml += '<p>Integrantes: ' + miEquipoEncontrado.miembros.length + '/' + estado.integrantes_por_equipo + '</p>';
+                    miEquipoHtml += '<ul>';
+                    miEquipoEncontrado.miembros.forEach(miembro => {
+                        const esMiembroActual = miembro.id === alumnoId;
+                        miEquipoHtml += '<li' + (esMiembroActual ? ' class="yo"' : '') + '>' + miembro.nombre + (esMiembroActual ? ' (yo)' : '') + '</li>';
+                    });
+                    miEquipoHtml += '</ul>';
                     
-					if (miEquipoEncontrado.completo) {
-						miEquipoHtml += '<div class="completo-badge">Equipo Completo</div>';
-					}
+                    if (miEquipoEncontrado.completo) {
+                        miEquipoHtml += '<div class="completo-badge">Equipo Completo</div>';
+                    }
                     
-					miEquipoCard.innerHTML = miEquipoHtml;
-				} else {
-					miEquipoCard.innerHTML = '<p>Esperando asignacion a equipo...</p>';
-				}
-			} else {
-				todosEquiposContainer.innerHTML = '<p>No hay equipos formados aun</p>';
-				miEquipoCard.innerHTML = '<p>Esperando formacion de equipos...</p>';
-			}
-		}
-	</script>
+                    miEquipoCard.innerHTML = miEquipoHtml;
+                } else {
+                    miEquipoCard.innerHTML = '<p>Esperando asignacion a equipo...</p>';
+                }
+            } else {
+                if (todosEquiposContainer) todosEquiposContainer.innerHTML = '<p>No hay equipos formados aun</p>';
+                miEquipoCard.innerHTML = '<p>Esperando formacion de equipos...</p>';
+            }
+        }
+    </script>
 </body>
 </html>

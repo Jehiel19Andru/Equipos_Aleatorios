@@ -23,7 +23,7 @@ const proto = grpc.loadPackageDefinition(packageDefinition);
 const salaProto = proto.sala;
 
 const docenteClient = new salaProto.SalaService(
-	'192.168.50.71:50051',
+	'192.168.50.151:50051',
 	grpc.credentials.createInsecure()
 );
 
