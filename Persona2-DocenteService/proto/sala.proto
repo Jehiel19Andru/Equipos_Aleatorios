@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package sala;
+
+service SalaService {
+	rpc RegistrarDocente (RegistrarDocenteRequest) returns (RegistrarDocenteResponse);
+	rpc ConfigurarIntegrantes (ConfigurarIntegrantesRequest) returns (ConfigurarIntegrantesResponse);
+	rpc UnirseAlumno (UnirseAlumnoRequest) returns (UnirseAlumnoResponse);
+	rpc DesconectarAlumno (DesconectarAlumnoRequest) returns (DesconectarAlumnoResponse);
+	rpc ObtenerEstado (ObtenerEstadoRequest) returns (ObtenerEstadoResponse);
+	rpc AleatorizarEquipos (AleatorizarEquiposRequest) returns (AleatorizarEquiposResponse);
+	rpc CambiarEstadoSala (CambiarEstadoSalaRequest) returns (CambiarEstadoSalaResponse);
+	rpc EliminarSala (EliminarSalaRequest) returns (EliminarSalaResponse);
+}
+
+message RegistrarDocenteRequest {
+	string nombre = 1;
+	string codigo_sala = 2;
+}
+
+message RegistrarDocenteResponse {
+	bool exito = 1;
+	string mensaje = 2;
+	string id_sala = 3;
+}
+
+message ConfigurarIntegrantesRequest {
+	string id_sala = 1;
+	int32 integrantes_por_equipo = 2;
+}
+
+message ConfigurarIntegrantesResponse {
+	bool exito = 1;
+	string mensaje = 2;
+}
+
+message UnirseAlumnoRequest {
+	string nombre = 1;
+	string codigo_sala = 2;
+}
+
+message UnirseAlumnoResponse {
+	bool exito = 1;
+	string mensaje = 2;
+	int32 numero_equipo = 3;
+	string id_alumno = 4;
+}
+
+message DesconectarAlumnoRequest {
+	string id_sala = 1;
+	string id_alumno = 2;
+}
+
+message DesconectarAlumnoResponse {
+	bool exito = 1;
+	string mensaje = 2;
+}
+
+message ObtenerEstadoRequest {
+	string id_sala = 1;
+}
+
+message ObtenerEstadoResponse {
+	repeated AlumnoInfo alumnos = 1;
+	repeated EquipoInfo equipos = 2;
+	int32 integrantes_por_equipo = 3;
+	bool activo = 4;
+}
+
+message AleatorizarEquiposRequest {
+	string id_sala = 1;
+}
+
+message AleatorizarEquiposResponse {
+	bool exito = 1;
+	string mensaje = 2;
+}
+
+message CambiarEstadoSalaRequest {
+	string id_sala = 1;
+	bool activo = 2;
+}
+
+message CambiarEstadoSalaResponse {
+	bool exito = 1;
+	string mensaje = 2;
+}
+
+message EliminarSalaRequest {
+	string id_sala = 1;
+}
+
+message EliminarSalaResponse {
+	bool exito = 1;
+	string mensaje = 2;
+	string id_sala = 3;
+}
+
+message AlumnoInfo {
+	string id = 1;
+	string nombre = 2;
+	int32 equipo_numero = 3;
+}
+
+message EquipoInfo {
+	int32 numero = 1;
+	repeated AlumnoInfo miembros = 2;
+	bool completo = 3;
+}

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Sistema de Equipos - Docente</title>
+	<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007ACC'/%3E%3Ctext x='50' y='55' font-size='60' text-anchor='middle' fill='white'%3ES%3C/text%3E%3C/svg%3E">
+	<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+	<div class="container">
+		<div class="header">
+			<h1>Panel del Docente</h1>
+		</div>
+        
+		<div id="loginSection" class="section">
+			<h2>Crear o Unirse a Sala</h2>
+			<div class="form-group">
+				<input type="text" id="docenteNombre" placeholder="Nombre del docente" class="input-field">
+			</div>
+			<div class="form-group">
+				<input type="text" id="codigoSala" placeholder="Codigo de sala (opcional)" class="input-field">
+			</div>
+			<button onclick="registrarDocente()" class="btn btn-primary">Crear/Unirse a Sala</button>
+		</div>
+        
+		<div id="configSection" class="section" style="display:none;">
+			<h2>Configuracion de Equipos</h2>
+			<div class="info-card">
+				<p><strong>Codigo Sala:</strong> <span id="salaCodigo"></span></p>
+					<p><strong>Estatus Sala:</strong> <span id="salaEstatus">Activa</span></p>
+					<p><strong>Comparte este codigo con los alumnos</strong></p>
+				</div>
+				<div class="form-group">
+					<label for="integrantesPorEquipo">Integrantes por equipo:</label>
+					<input type="number" id="integrantesPorEquipo" min="1" max="10" value="2" class="input-field">
+					<button onclick="configurarEquipos()" class="btn btn-secondary">Aplicar Configuracion</button>
+					<button id="toggleSalaBtn" onclick="toggleEstadoSala()" class="btn btn-secondary">Cerrar Sala</button>
+				<button id="logoutDocenteBtn" onclick="cerrarSesionDocente()" class="btn btn-tertiary">Cerrar Sesión</button>
+					<button id="deleteSalaBtn" onclick="borrarSala()" class="btn btn-danger">Borrar Sala</button>
+					<button onclick="balancearAutomaticamente()" class="btn btn-secondary">Balancear Automáticamente</button>
+					<button onclick="aleatorizarEquipos()" class="btn btn-secondary">Aleatorizar Equipos</button>
+					<button onclick="toggleHistorialSalas()" class="btn btn-secondary">Ver Salas Guardadas</button>
+				</div>
+			</div>
+			<div id="historialSection" class="section" style="display:none;">
+				<h2>Historial de Salas</h2>
+				<div id="salasHistorialContainer" class="history-container"></div>
+		</div>
+
+		<div id="equiposSection" class="section" style="display:none;">
+			<h2>Equipos Actuales</h2>
+			<div id="equiposContainer" class="equipos-grid"></div>
+		</div>
+
+		<div id="alumnosSection" class="section" style="display:none;">
+			<h2>Alumnos Conectados</h2>
+			<div id="alumnosList" class="alumnos-list"></div>
+		</div>
+	</div>
+    
+	<script>
+		let ws = null;
+		let salaId = null;
+		let ultimoEstado = null;
+		let historialSalas = [];
+		let historialVisible = false;
+		let ultimoEstadoSalaActivo = true;
+
+		cargarHistorialSalas();
+        
+		function registrarDocente() {
+			const nombre = document.getElementById('docenteNombre').value;
+			const codigoSala = document.getElementById('codigoSala').value.trim();
+            
+			if (!nombre) {
+				alert('Por favor ingrese su nombre');
+				return;
+			}
+            
+			ws = new WebSocket(`ws://${window.location.host}`);
+            
+			ws.onopen = () => {
+				ws.send(JSON.stringify({
+					type: 'registrar_docente',
+					nombre: nombre,
+					codigo_sala: codigoSala
+				}));
+			};
+            
+			ws.onmessage = (event) => {
+				const data = JSON.parse(event.data);
+                
+				if (data.type === 'registro_exitoso') {
+					salaId = data.data.id_sala;
+					document.getElementById('salaCodigo').innerText = salaId;
+					document.getElementById('loginSection').style.display = 'none';
+					document.getElementById('configSection').style.display = 'block';
+					document.getElementById('equiposSection').style.display = 'block';
+					document.getElementById('alumnosSection').style.display = 'block';
+                    
+					guardarHistorialSala({
+						id_sala: salaId,
+						activo: true,
+						equipos: [],
+						alumnos: [],
+						integrantes_por_equipo: parseInt(document.getElementById('integrantesPorEquipo').value) || 2,
+						ultimaActualizacion: Date.now()
+					});
+					solicitarEstadoActual();
+				} else if (data.type === 'actualizacion') {
+					actualizarInterfaz(data.data);
+				} else if (data.type === 'configuracion_completada') {
+					if (data.data.exito) {
+						alert('Configuracion aplicada exitosamente');
+					} else {
+						alert('Error al configurar: ' + data.data.mensaje);
+					}
+				} else if (data.type === 'balanceo_completado') {
+					if (data.data.exito) {
+						alert('Balanceo automatico aplicado correctamente');
+					} else {
+						alert('Error al balancear: ' + data.data.mensaje);
+					}
+				} else if (data.type === 'aleatorizar_completado') {
+					if (data.data.exito) {
+						alert('Equipos aleatorizados exitosamente');
+					} else {
+						alert('Error al aleatorizar: ' + data.data.mensaje);
+					}
+				} else if (data.type === 'cambio_estado_completado') {
+					if (data.data.exito) {
+						ultimoEstadoSalaActivo = data.data.activo;
+						actualizarBotonEstado();
+					}
+				} else if (data.type === 'estado_actual') {
+					actualizarInterfaz(data.data);
+				} else if (data.type === 'eliminar_completado') {
+					if (data.data && data.data.exito) {
+						alert('Sala eliminada correctamente');
+						if (data.data.id_sala) {
+							eliminarSalaDelHistorial(data.data.id_sala);
+						}
+						if (salaId === data.data.id_sala) {
+							location.reload();
+						}
+					} else {
+						alert('Error al eliminar sala: ' + (data.data ? data.data.mensaje : ''));
+					}
+				} else if (data.type === 'sala_eliminada') {
+					alert('La sala ha sido eliminada: ' + data.data.mensaje);
+					location.reload();
+				} else if (data.type === 'error') {
+					alert('Error: ' + data.data.mensaje);
+					if (data.data && data.data.mensaje && data.data.mensaje.includes('Sala no encontrada')) {
+						eliminarSalaDelHistorial(salaId);
+					}
+				}
+			};
+		}
+
+		function borrarSala() {
+			const idSala = String(salaId || '').trim();
+			if (!idSala) { alert('No hay sala activa.'); return; }
+			if (!confirm('¿Confirma que desea borrar definitivamente la sala ' + idSala + '?')) return;
+			if (!ws || ws.readyState !== WebSocket.OPEN) {
+				alert('No hay conexion activa con el servidor. Recargue la pagina y vuelva a intentarlo.');
+				return;
+			}
+			ws.send(JSON.stringify({ type: 'eliminar_sala', id_sala: idSala }));
+		}
+
+		function cerrarSesionDocente() {
+			if (ws && ws.readyState === WebSocket.OPEN) {
+				ws.close();
+			}
+			salaId = null;
+			document.getElementById('loginSection').style.display = 'block';
+			document.getElementById('configSection').style.display = 'none';
+			document.getElementById('equiposSection').style.display = 'none';
+			document.getElementById('alumnosSection').style.display = 'none';
+			document.getElementById('historialSection').style.display = 'none';
+			document.getElementById('salaCodigo').innerText = '';
+			const equiposContainer = document.getElementById('equiposContainer');
+			if (equiposContainer) equiposContainer.innerHTML = '';
+			const alumnosList = document.getElementById('alumnosList');
+			if (alumnosList) alumnosList.innerHTML = '';
+		}
+        
+		function eliminarSalaDelHistorial(id) {
+			const index = historialSalas.findIndex(item => item.id_sala === id);
+			if (index >= 0) {
+				historialSalas.splice(index, 1);
+				saveHistorialSalas();
+				renderizarHistorialSalas();
+			}
+		}
+
+		function configurarEquipos() {
+			const integrantes = parseInt(document.getElementById('integrantesPorEquipo').value);
+            
+			if (integrantes < 1 || integrantes > 10) {
+				alert('El numero de integrantes debe estar entre 1 y 10');
+				return;
+			}
+            
+			ws.send(JSON.stringify({
+				type: 'configurar_equipos',
+				id_sala: salaId,
+				integrantes: integrantes
+			}));
+		}
+
+		function cargarHistorialSalas() {
+			try {
+				historialSalas = JSON.parse(localStorage.getItem('salasHistorial') || '[]');
+			} catch (error) {
+				historialSalas = [];
+			}
+			renderizarHistorialSalas();
+		}
+
+		function guardarHistorialSala(sala) {
+			if (!sala || !sala.id_sala) return;
+			const index = historialSalas.findIndex(item => item.id_sala === sala.id_sala);
+			const entry = {
+				id_sala: sala.id_sala,
+				activo: sala.activo !== false,
+				equipos: sala.equipos || [],
+				alumnos: sala.alumnos || [],
+				integrantes_por_equipo: sala.integrantes_por_equipo || 2,
+				ultimaActualizacion: sala.ultimaActualizacion || Date.now()
+			};
+			if (index >= 0) {
+				historialSalas[index] = { ...historialSalas[index], ...entry };
+			} else {
+				historialSalas.unshift(entry);
+			}
+			saveHistorialSalas();
+			renderizarHistorialSalas();
+		}
+
+		function saveHistorialSalas() {
+			localStorage.setItem('salasHistorial', JSON.stringify(historialSalas));
+		}
+
+		function obtenerSalaActual() {
+			return historialSalas.find(item => item.id_sala === salaId) || { activo: true };
+		}
+
+		function actualizarHistorialSala(estado) {
+			if (!salaId || !estado) return;
+			guardarHistorialSala({
+				id_sala: salaId,
+				activo: estado.activo !== false,
+				equipos: estado.equipos || [],
+				alumnos: estado.alumnos || [],
+				integrantes_por_equipo: estado.integrantes_por_equipo || 2,
+				ultimaActualizacion: Date.now()
+			});
+		}
+
+		function toggleHistorialSalas() {
+			historialVisible = !historialVisible;
+			document.getElementById('historialSection').style.display = historialVisible ? 'block' : 'none';
+			renderizarHistorialSalas();
+		}
+
+		function toggleEstadoSala() {
+			if (!salaId) {
+				alert('No hay sala activa.');
+				return;
+			}
+			const nuevoEstado = !ultimoEstadoSalaActivo;
+			ws.send(JSON.stringify({
+				type: 'cambiar_estado_sala',
+				id_sala: salaId,
+				activo: nuevoEstado
+			}));
+		}
+
+		function actualizarBotonEstado() {
+			const btn = document.getElementById('toggleSalaBtn');
+			if (btn) {
+				btn.innerText = ultimoEstadoSalaActivo ? 'Cerrar Sala' : 'Abrir Sala';
+			}
+			document.getElementById('salaEstatus').innerText = ultimoEstadoSalaActivo ? 'Activa' : 'Cerrada';
+		}
+
+		function seleccionarSalaHistorial(id) {
+			if (!id) return;
+			salaId = String(id || '').trim();
+			document.getElementById('salaCodigo').innerText = salaId;
+			solicitarEstadoActual();
+		}
+
+		function renderizarHistorialSalas() {
+			const container = document.getElementById('salasHistorialContainer');
+			if (!container) return;
+			container.innerHTML = '';
+
+			if (!historialSalas || historialSalas.length === 0) {
+				container.innerHTML = '<p>No hay salas guardadas.</p>';
+				return;
+			}
+
+			historialSalas.forEach(sala => {
+				const salaCard = document.createElement('div');
+				salaCard.className = 'equipo-card';
+				const estadoText = sala.activo ? 'Activa' : 'Cerrada';
+				let equiposHtml = '';
+				sala.equipos.forEach(equipo => {
+					equiposHtml += `<div class="equipo-card"><h3>Equipo ${equipo.numero}</h3><p>Integrantes: ${equipo.miembros.length}/${sala.integrantes_por_equipo}</p><ul>${equipo.miembros.map(miembro => `<li>${miembro.nombre}</li>`).join('')}</ul></div>`;
+				});
+				salaCard.innerHTML = `
+					<h3>Sala ${sala.id_sala}</h3>
+					<p><strong>Estatus:</strong> ${estadoText}</p>
+					<p><strong>Actualizada:</strong> ${new Date(sala.ultimaActualizacion).toLocaleString()}</p>
+					<button class="btn btn-secondary" onclick="seleccionarSalaHistorial('${sala.id_sala}')">Seleccionar Sala</button>
+					<button class="btn btn-secondary" onclick="toggleEstadoSalaHistorial('${sala.id_sala}', ${sala.activo})">${sala.activo ? 'Cerrar Sala' : 'Abrir Sala'}</button>
+					<button class="btn btn-danger" onclick="eliminarSalaHistorial('${sala.id_sala}')">Borrar Sala</button>
+					<div style="margin-top: 10px;">${equiposHtml || '<p>No hay equipos registrados</p>'}</div>
+				`;
+				container.appendChild(salaCard);
+			});
+		}
+
+		function toggleEstadoSalaHistorial(id, estadoActual) {
+			if (!id) return;
+			salaId = id;
+			document.getElementById('salaCodigo').innerText = salaId;
+			ws.send(JSON.stringify({
+				type: 'cambiar_estado_sala',
+				id_sala: id,
+				activo: !estadoActual
+			}));
+		}
+
+		function eliminarSalaHistorial(id) {
+			const idSala = String(id || '').trim();
+			if (!idSala) return;
+			if (!confirm('¿Seguro que desea borrar la sala ' + idSala + ' de forma permanente?')) return;
+			if (!ws || ws.readyState !== WebSocket.OPEN) {
+				alert('No hay conexion activa con el servidor. Recargue la pagina y vuelva a intentarlo.');
+				return;
+			}
+			salaId = idSala;
+			document.getElementById('salaCodigo').innerText = salaId;
+			ws.send(JSON.stringify({ type: 'eliminar_sala', id_sala: idSala }));
+		}
+
+		function balancearAutomaticamente() {
+			if (!salaId) {
+				alert('Debe crear o unirse a una sala primero.');
+				return;
+			}
+			ws.send(JSON.stringify({
+				type: 'balancear_equipos',
+				id_sala: salaId
+			}));
+		}
+        
+		function aleatorizarEquipos() {
+			if (!salaId) {
+				alert('Debe crear o unirse a una sala primero.');
+				return;
+			}
+			ws.send(JSON.stringify({
+				type: 'aleatorizar_equipos',
+				id_sala: salaId
+			}));
+		}
+
+		function fisherYatesShuffle(array) {
+			const copia = [...array];
+			for (let i = copia.length - 1; i > 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1));
+				[copia[i], copia[j]] = [copia[j], copia[i]];
+			}
+			return copia;
+		}
+
+		function renderizarEquipos(equipos, estado) {
+			const equiposContainer = document.getElementById('equiposContainer');
+			equiposContainer.innerHTML = '';
+
+			if (equipos.length === 0) {
+				equiposContainer.innerHTML = '<p>No hay equipos formados aun</p>';
+				return;
+			}
+
+			equipos.forEach(equipo => {
+				const equipoCard = document.createElement('div');
+				equipoCard.className = 'equipo-card';
+				const completoClass = equipo.completo ? 'equipo-completo' : 'equipo-incompleto';
+				equipoCard.classList.add(completoClass);
+
+				let miembrosHtml = '<h3>Equipo ' + equipo.numero + '</h3>';
+				miembrosHtml += '<p>Integrantes: ' + equipo.miembros.length + '/' + estado.integrantes_por_equipo + '</p>';
+				miembrosHtml += '<ul>';
+				equipo.miembros.forEach(miembro => {
+					miembrosHtml += '<li>' + miembro.nombre + '</li>';
+				});
+				miembrosHtml += '</ul>';
+
+				if (equipo.completo) {
+					miembrosHtml += '<div class="completo-badge">Equipo Completo</div>';
+				}
+
+				equipoCard.innerHTML = miembrosHtml;
+				equiposContainer.appendChild(equipoCard);
+			});
+		}
+        
+		function solicitarEstadoActual() {
+			ws.send(JSON.stringify({
+				type: 'obtener_estado',
+				id_sala: salaId,
+				tipo: 'docente'
+			}));
+		}
+        
+		function balancearEquipos(equipos, maxIntegrantes) {
+			const copia = equipos.map(equipo => ({
+				numero: equipo.numero,
+				miembros: [...equipo.miembros],
+				completo: equipo.completo
+			}));
+			for (let i = 0; i < copia.length; i++) {
+				const actual = copia[i];
+				if (actual.miembros.length >= maxIntegrantes) continue;
+				for (let j = i + 1; j < copia.length && actual.miembros.length < maxIntegrantes; j++) {
+					const siguiente = copia[j];
+					while (actual.miembros.length < maxIntegrantes && siguiente.miembros.length > 0) {
+						actual.miembros.push(siguiente.miembros.shift());
+					}
+				}
+			}
+			return copia
+				.filter(equipo => equipo.miembros.length > 0)
+				.map(equipo => ({
+					...equipo,
+					completo: equipo.miembros.length === maxIntegrantes
+				}));
+		}
+        
+		function actualizarInterfaz(estado) {
+			const equiposContainer = document.getElementById('equiposContainer');
+			const alumnosList = document.getElementById('alumnosList');
+            
+			equiposContainer.innerHTML = '';
+			alumnosList.innerHTML = '';
+            
+			const equiposBalanceados = estado.equipos && estado.equipos.length > 0
+				? balancearEquipos(estado.equipos, estado.integrantes_por_equipo)
+				: [];
+            
+			if (equiposBalanceados.length > 0) {
+				equiposBalanceados.forEach(equipo => {
+					const equipoCard = document.createElement('div');
+					equipoCard.className = 'equipo-card';
+					const completoClass = equipo.completo ? 'equipo-completo' : 'equipo-incompleto';
+					equipoCard.classList.add(completoClass);
+                    
+					let miembrosHtml = '<h3>Equipo ' + equipo.numero + '</h3>';
+					miembrosHtml += '<p>Integrantes: ' + equipo.miembros.length + '/' + estado.integrantes_por_equipo + '</p>';
+					miembrosHtml += '<ul>';
+					equipo.miembros.forEach(miembro => {
+						miembrosHtml += '<li>' + miembro.nombre + '</li>';
+					});
+					miembrosHtml += '</ul>';
+                    
+					if (equipo.completo) {
+						miembrosHtml += '<div class="completo-badge">Equipo Completo</div>';
+					}
+                    
+					equipoCard.innerHTML = miembrosHtml;
+					equiposContainer.appendChild(equipoCard);
+				});
+			} else {
+				equiposContainer.innerHTML = '<p>No hay equipos formados aun</p>';
+			}
+            
+			ultimoEstado = estado;
+			ultimoEstadoSalaActivo = estado.activo !== false;
+			actualizarHistorialSala(estado);
+			actualizarBotonEstado();
+			if (estado.alumnos && estado.alumnos.length > 0) {
+				estado.alumnos.forEach(alumno => {
+					const alumnoItem = document.createElement('div');
+					alumnoItem.className = 'alumno-item';
+					alumnoItem.innerHTML = `
+						<strong>${alumno.nombre}</strong>
+						<span class="equipo-badge">Equipo ${alumno.equipo_numero}</span>
+					`;
+					alumnosList.appendChild(alumnoItem);
+				});
+			} else {
+				alumnosList.innerHTML = '<p>No hay alumnos conectados</p>';
+			}
+		}
+	</script>
+</body>
+</html>

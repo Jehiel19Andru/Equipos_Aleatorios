@@ -1,0 +1,10 @@
+{
+	"name": "alumno-service",
+	"version": "1.0.0",
+	"main": "server.js",
+	"dependencies": {
+		"@grpc/grpc-js": "^1.14.4",
+		"@grpc/proto-loader": "^0.7.15",
+		"dotenv": "^16.6.1"
+	}
+}

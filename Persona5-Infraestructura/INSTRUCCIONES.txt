@@ -1,0 +1,12 @@
+Esta carpeta es para la Persona 5: Infraestructura, integración, pruebas y documentación.
+
+Sugerencias:
+- Aquí puedes agregar archivos como Dockerfile, docker-compose.yml, scripts de integración, pruebas automáticas, documentación técnica, etc.
+- Coordina la integración entre los servicios y ayuda a los demás a ejecutar el sistema completo.
+- Puedes crear un README con instrucciones para levantar todo el sistema distribuido.
+
+Ejemplo de archivos útiles:
+- docker-compose.yml
+- scripts de despliegue
+- documentación de endpoints
+- manual de usuario
